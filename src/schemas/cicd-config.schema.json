@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://orbit-cicd.dev/schemas/cicd-config.schema.json",
+  "title": "Orbit CI/CD Configuration",
+  "description": "Schema for cicd-config.json — defines projects, components, and their deployment modes.",
+  "type": "object",
+  "required": ["projects"],
+  "additionalProperties": false,
+  "properties": {
+    "projects": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/Project" }
+    }
+  },
+  "definitions": {
+    "Project": {
+      "type": "object",
+      "required": ["name", "repository", "branch", "components"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable project name."
+        },
+        "repository": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Git repository URL (HTTPS or SSH)."
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Branch to track for deployments."
+        },
+        "localPath": {
+          "type": "string",
+          "description": "Optional local filesystem path where the repo is cloned."
+        },
+        "components": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/Component" }
+        }
+      }
+    },
+    "Component": {
+      "type": "object",
+      "required": ["name", "path", "mode", "commands"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Component identifier (e.g. 'frontend', 'api')."
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Relative path within the repository to this component."
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["local", "remote"],
+          "description": "Deployment mode — 'local' runs on the CI server, 'remote' deploys via SSH."
+        },
+        "ssh": { "$ref": "#/definitions/SSHConfig" },
+        "commands": { "$ref": "#/definitions/Commands" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "mode": { "const": "remote" } },
+            "required": ["mode"]
+          },
+          "then": {
+            "required": ["ssh"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "mode": { "const": "local" } },
+            "required": ["mode"]
+          },
+          "then": {
+            "not": { "required": ["ssh"] }
+          }
+        }
+      ]
+    },
+    "SSHConfig": {
+      "type": "object",
+      "required": ["host", "user", "keyPath", "remotePath"],
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "type": "string",
+          "minLength": 1,
+          "description": "SSH hostname or IP address."
+        },
+        "user": {
+          "type": "string",
+          "minLength": 1,
+          "description": "SSH user to connect as."
+        },
+        "keyPath": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Path to the SSH private key file."
+        },
+        "remotePath": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Absolute path on the remote server where the component is deployed."
+        }
+      }
+    },
+    "Commands": {
+      "type": "object",
+      "required": ["deploy"],
+      "additionalProperties": false,
+      "properties": {
+        "pull": {
+          "type": "string",
+          "description": "Command to pull latest changes (optional)."
+        },
+        "install": {
+          "type": "string",
+          "description": "Command to install dependencies (optional)."
+        },
+        "deploy": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Command to deploy the component (required)."
+        }
+      }
+    }
+  }
+}
