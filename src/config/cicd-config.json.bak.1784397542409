@@ -1,0 +1,113 @@
+{
+  "projects": [
+    {
+      "name": "SmartKrishi",
+      "repository": "teamharsh/SmartKrishi",
+      "branch": "main",
+      "localPath": "/var/www/smartkrishi",
+      "components": [
+        {
+          "name": "Backend-API",
+          "path": "backend/",
+          "mode": "local",
+          "healthCheck": {
+            "type": "http",
+            "url": "http://localhost:5000/health",
+            "expectedStatus": 200,
+            "timeout": 5000,
+            "retries": 3,
+            "delay": 2000
+          },
+          "dependencyFiles": [
+            "backend/package.json",
+            "backend/package-lock.json"
+          ],
+          "env": [
+            "PORT",
+            "MONGODB_URI",
+            "JWT_SECRET",
+            "TELEGRAM_BOT_TOKEN",
+            "TELEGRAM_CHAT_ID",
+            "PHONEPE_MERCHANT_ID",
+            "PHONEPE_KEY"
+          ],
+          "commands": {
+            "install": "npm ci",
+            "deploy": "pm2 reload smartkrishi-backend"
+          }
+        },
+        {
+          "name": "Frontend-Dashboard",
+          "path": "frontend/",
+          "mode": "local",
+          "healthCheck": {
+            "type": "http",
+            "url": "https://smartkrishiai.vercel.app",
+            "expectedStatus": 200
+          },
+          "dependencyFiles": [
+            "frontend/package.json",
+            "frontend/package-lock.json"
+          ],
+          "env": [
+            "VITE_API_URL"
+          ],
+          "commands": {
+            "install": "npm ci",
+            "build": "npm run build",
+            "deploy": "pm2 reload smartkrishi-frontend"
+          }
+        },
+        {
+          "name": "ML-Service",
+          "path": "ml/",
+          "mode": "local",
+          "healthCheck": {
+            "type": "http",
+            "url": "http://localhost:8000/health",
+            "expectedStatus": 200,
+            "timeout": 5000
+          },
+          "dependencyFiles": [
+            "ml/requirements.txt"
+          ],
+          "commands": {
+            "install": "pip install -r requirements.txt",
+            "deploy": "pm2 reload smartkrishi-ml"
+          }
+        }
+      ]
+    },
+    {
+      "name": "DevTinder",
+      "repository": "teamharsh/DevTinder",
+      "branch": "main",
+      "localPath": "/var/www/devtinder",
+      "components": [
+        {
+          "name": "API-Server",
+          "path": "backend/",
+          "mode": "local",
+          "healthCheck": {
+            "type": "http",
+            "url": "http://localhost:3000/health",
+            "expectedStatus": 200
+          },
+          "dependencyFiles": [
+            "backend/package.json",
+            "backend/package-lock.json"
+          ],
+          "env": [
+            "PORT",
+            "MONGODB_URI",
+            "JWT_SECRET"
+          ],
+          "commands": {
+            "install": "npm ci",
+            "deploy": "pm2 reload devtinder-backend"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -49,6 +49,7 @@ When a current configuration is provided above, you are **EDITING**, not regener
 4. If the user's instruction is ambiguous about whether to add a new component or modify an existing one, **always prefer ADDING a new one**.
 5. Return the **FULL config** including all untouched existing projects and components **exactly as they were** in the Current Configuration, plus your addition or modification.
 6. Preserve every field value on untouched components **verbatim** — same `path`, same `mode`, same `commands`, same `ssh` block. Do not "improve" or "normalize" values the user did not ask you to change.
+7. If an existing project or component has fields not mentioned in this schema (e.g. `healthCheck`, `env`, `build`, `dependencyFiles`, or any other unfamiliar field), you **MUST** preserve them exactly as-is in your output, even though you don't need to understand or modify them. **Never drop a field just because it's unfamiliar to you.**
 
 ---
 

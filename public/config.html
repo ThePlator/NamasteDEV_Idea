@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orbit CI/CD — Config Generator</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        Helvetica, Arial, sans-serif;
+      background: #0f1117;
+      color: #e1e4ea;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────── */
+
+    .container {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    header {
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f0f0f0;
+    }
+
+    header p {
+      font-size: 0.875rem;
+      color: #8b8fa3;
+      margin-top: 0.25rem;
+    }
+
+    /* ── Cards ──────────────────────────────────────────────── */
+
+    .card {
+      background: #181a20;
+      border: 1px solid #2a2d38;
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #c4c8d4;
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Textarea ───────────────────────────────────────────── */
+
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem 1rem;
+      font-family: inherit;
+      font-size: 0.9375rem;
+      color: #e1e4ea;
+      background: #12131a;
+      border: 1px solid #2a2d38;
+      border-radius: 8px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus {
+      border-color: #5b8def;
+    }
+
+    textarea::placeholder {
+      color: #555a6e;
+    }
+
+    /* ── Buttons ────────────────────────────────────────────── */
+
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 0.875rem;
+      font-weight: 600;
+      padding: 0.625rem 1.25rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s, opacity 0.2s;
+    }
+
+    .btn-generate {
+      background: #5b8def;
+      color: #fff;
+    }
+
+    .btn-generate:hover:not(:disabled) {
+      background: #4a7ce0;
+    }
+
+    .btn-apply {
+      background: #2ea043;
+      color: #fff;
+    }
+
+    .btn-apply:hover:not(:disabled) {
+      background: #278a38;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ── Status banner ─────────────────────────────────────── */
+
+    .status {
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    .status.info {
+      background: #1a2744;
+      border: 1px solid #264580;
+      color: #7eb8f7;
+      display: block;
+    }
+
+    .status.success {
+      background: #152d1c;
+      border: 1px solid #276235;
+      color: #56d364;
+      display: block;
+    }
+
+    .status.error {
+      background: #301515;
+      border: 1px solid #6e2a2a;
+      color: #f08080;
+      display: block;
+    }
+
+    /* ── Diff list ──────────────────────────────────────────── */
+
+    .diff-list {
+      list-style: none;
+      font-family: "SF Mono", "Cascadia Code", "Fira Code", "Menlo", monospace;
+      font-size: 0.8125rem;
+      line-height: 1.8;
+    }
+
+    .diff-list li {
+      padding: 0.15rem 0;
+    }
+
+    .diff-add {
+      color: #56d364;
+    }
+
+    .diff-remove {
+      color: #f08080;
+    }
+
+    .diff-danger {
+      color: #ff4d4d;
+      background: #3d1111;
+      border: 1px solid #8b2020;
+      border-radius: 6px;
+      padding: 0.35rem 0.75rem;
+      margin: 0.25rem 0;
+      font-weight: 700;
+      animation: pulse-danger 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-danger {
+      0%, 100% { border-color: #8b2020; }
+      50% { border-color: #ff4d4d; }
+    }
+
+    .diff-modify {
+      color: #d2a34a;
+    }
+
+    /* ── Deletion warning banner ────────────────────────────── */
+
+    .deletion-warning {
+      background: #3d1111;
+      border: 2px solid #cc3333;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      color: #ff6b6b;
+      font-size: 0.875rem;
+      font-weight: 600;
+      display: none;
+    }
+
+    .deletion-warning.visible {
+      display: block;
+    }
+
+    /* ── Collapsible config ────────────────────────────────── */
+
+    details {
+      margin-top: 1rem;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-size: 0.8125rem;
+      color: #8b8fa3;
+      user-select: none;
+    }
+
+    details summary:hover {
+      color: #c4c8d4;
+    }
+
+    pre {
+      margin-top: 0.5rem;
+      padding: 1rem;
+      background: #12131a;
+      border: 1px solid #2a2d38;
+      border-radius: 8px;
+      font-family: "SF Mono", "Cascadia Code", "Fira Code", "Menlo", monospace;
+      font-size: 0.8125rem;
+      color: #b0b4c0;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* ── Spinner ────────────────────────────────────────────── */
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>⚙ Orbit Config Generator</h1>
+      <p>Describe your deployment — the AI generates a valid cicd-config.json</p>
+    </header>
+
+    <!-- Status banner -->
+    <div id="status" class="status"></div>
+
+    <!-- Step 1: Generate -->
+    <div class="card">
+      <h2>1 — Describe your deployment</h2>
+      <textarea
+        id="instruction"
+        placeholder='e.g. "Express API in backend/, deploys locally via PM2, restart command pm2 reload api"'
+      ></textarea>
+      <div class="btn-row">
+        <button class="btn-generate" id="btn-generate">Generate config</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Review diff -->
+    <div class="card" id="diff-card" style="display: none;">
+      <h2>2 — Review changes</h2>
+      <div class="deletion-warning" id="deletion-warning">
+        ⛔ WARNING: This config would DELETE existing project(s).
+        The server will reject this apply. Re-generate with a more specific instruction.
+      </div>
+      <div class="deletion-warning" id="field-loss-warning">
+        ⛔ WARNING: This config would DROP existing fields.
+        <div id="field-loss-details" style="margin-top: 0.5rem; font-weight: 400; font-size: 0.8125rem;"></div>
+      </div>
+      <ul class="diff-list" id="diff-list"></ul>
+      <details>
+        <summary>Show full proposed config</summary>
+        <pre id="config-preview"></pre>
+      </details>
+      <div class="btn-row">
+        <button class="btn-apply" id="btn-apply" disabled>Apply changes</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $instruction = document.getElementById("instruction");
+    const $btnGenerate = document.getElementById("btn-generate");
+    const $btnApply = document.getElementById("btn-apply");
+    const $status = document.getElementById("status");
+    const $diffCard = document.getElementById("diff-card");
+    const $diffList = document.getElementById("diff-list");
+    const $configPreview = document.getElementById("config-preview");
+
+    let pendingConfig = null;
+
+    // ── Helpers ────────────────────────────────────────────
+
+    function setStatus(type, message) {
+      $status.className = "status " + type;
+      $status.textContent = message;
+    }
+
+    function clearStatus() {
+      $status.className = "status";
+      $status.textContent = "";
+    }
+
+    function setLoading(button, loading, label) {
+      button.disabled = loading;
+      button.innerHTML = loading
+        ? '<span class="spinner"></span>' + label
+        : label;
+    }
+
+    function formatChange(c) {
+      switch (c.type) {
+        case "add-project":
+          return { cls: "diff-add", text: '➕ project "' + c.project + '"' };
+        case "remove-project":
+          return { cls: "diff-danger", text: '⛔ DELETES project "' + c.project + '" — THIS WILL BE REJECTED' };
+        case "add-component":
+          return {
+            cls: "diff-add",
+            text:
+              '  ➕ component "' + c.component + '" in project "' + c.project + '"',
+          };
+        case "remove-component":
+          return {
+            cls: "diff-remove",
+            text:
+              '  ➖ component "' + c.component + '" in project "' + c.project + '"',
+          };
+        case "modify-component":
+          return {
+            cls: "diff-modify",
+            text:
+              '  ✏️ "' + c.component + '" in "' + c.project + '" — ' +
+              c.field + ": " + JSON.stringify(c.oldValue) + " → " + JSON.stringify(c.newValue),
+          };
+        default:
+          return { cls: "", text: JSON.stringify(c) };
+      }
+    }
+
+    // ── Generate ───────────────────────────────────────────
+
+    $btnGenerate.addEventListener("click", async () => {
+      const instruction = $instruction.value.trim();
+      if (!instruction) {
+        setStatus("error", "Please enter an instruction first.");
+        return;
+      }
+
+      clearStatus();
+      pendingConfig = null;
+      $btnApply.disabled = true;
+      $diffCard.style.display = "none";
+
+      setLoading($btnGenerate, true, "Generating…");
+
+      try {
+        const res = await fetch("/config/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ instruction }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          let msg = data.message || "Generation failed.";
+          if (data.details) msg += "\n\n" + data.details;
+          setStatus("error", msg);
+          return;
+        }
+
+        // Success — render diff
+        pendingConfig = data.proposedConfig;
+
+        const $deletionWarning = document.getElementById("deletion-warning");
+        const hasProjectDeletions = data.diff.some(
+          (c) => c.type === "remove-project"
+        );
+
+        // Show/hide deletion warning banner
+        $deletionWarning.className = hasProjectDeletions
+          ? "deletion-warning visible"
+          : "deletion-warning";
+
+        $diffList.innerHTML = "";
+        if (data.diff.length === 0) {
+          const li = document.createElement("li");
+          li.textContent = "No changes detected.";
+          $diffList.appendChild(li);
+        } else {
+          for (const change of data.diff) {
+            const { cls, text } = formatChange(change);
+            const li = document.createElement("li");
+            li.className = cls;
+            li.textContent = text;
+            $diffList.appendChild(li);
+          }
+        }
+
+        $configPreview.textContent = JSON.stringify(
+          data.proposedConfig,
+          null,
+          2
+        );
+
+        $diffCard.style.display = "block";
+
+        // Disable Apply if project deletions detected — server will reject anyway
+        if (hasProjectDeletions) {
+          $btnApply.disabled = true;
+          setStatus(
+            "error",
+            "⛔ Config contains project deletions — Apply is blocked. " +
+            "Re-generate with a more specific instruction that preserves existing projects."
+          );
+        } else {
+          $btnApply.disabled = false;
+          setStatus("success", "Config generated — review the changes below.");
+        }
+      } catch (err) {
+        setStatus("error", "Network error: " + err.message);
+      } finally {
+        setLoading($btnGenerate, false, "Generate config");
+      }
+    });
+
+    // ── Apply ──────────────────────────────────────────────
+
+    $btnApply.addEventListener("click", async () => {
+      if (!pendingConfig) return;
+
+      clearStatus();
+      setLoading($btnApply, true, "Applying…");
+
+      try {
+        const res = await fetch("/config/apply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ proposedConfig: pendingConfig }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          let msg = data.message || "Apply failed.";
+          if (data.errors) {
+            msg +=
+              "\n\n" +
+              data.errors.map((e) => "• " + (e.instancePath || "/") + " " + e.message).join("\n");
+          }
+          // Show field-loss warning banner if this is a 409 with details about missing fields
+          const $fieldLossWarning = document.getElementById("field-loss-warning");
+          const $fieldLossDetails = document.getElementById("field-loss-details");
+          if (res.status === 409 && Array.isArray(data.details) && data.details.some(d => d.missingFields)) {
+            const lines = data.details.map(d => {
+              const loc = d.component ? d.project + "/" + d.component : d.project;
+              return "• " + loc + ": " + d.missingFields.join(", ");
+            });
+            $fieldLossDetails.textContent = lines.join("\n");
+            $fieldLossDetails.style.whiteSpace = "pre-wrap";
+            $fieldLossWarning.className = "deletion-warning visible";
+          } else {
+            $fieldLossWarning.className = "deletion-warning";
+          }
+          setStatus("error", msg);
+          return;
+        }
+
+        // Success — lock the apply button to prevent double-apply
+        pendingConfig = null;
+        $btnApply.disabled = true;
+        setStatus(
+          "success",
+          "✅ " + data.message + (data.backupPath ? " (backup: " + data.backupPath + ")" : "")
+        );
+      } catch (err) {
+        setStatus("error", "Network error: " + err.message);
+      } finally {
+        setLoading($btnApply, false, "Apply changes");
+      }
+    });
+  </script>
+</body>
+</html>

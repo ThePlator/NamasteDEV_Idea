@@ -17,7 +17,7 @@
     "Project": {
       "type": "object",
       "required": ["name", "repository", "branch", "components"],
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "name": {
           "type": "string",
@@ -48,7 +48,7 @@
     "Component": {
       "type": "object",
       "required": ["name", "path", "mode", "commands"],
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "name": {
           "type": "string",
@@ -119,7 +119,7 @@
     "Commands": {
       "type": "object",
       "required": ["deploy"],
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
         "pull": {
           "type": "string",
