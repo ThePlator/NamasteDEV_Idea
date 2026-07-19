@@ -1,3 +1,6 @@
 node_modules
 .env
 src/store/lkg.json
+src/config/cicd-config.json.safe-backup
+src/config/*.bak.*
+src/config/*.tmp

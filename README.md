@@ -2,6 +2,40 @@
 
 Orbit is a lightweight, configuration-driven CI/CD engine designed to automate multi-project and multi-component deployments. Built on Node.js and Express, it provides smart change-detection for monorepos, automated dependency installation, and local or remote SSH deployment flows triggered via GitHub Webhooks.
 
+🔗 **Live demo:** [will be added after deploy]
+*Deployed on Render — see `render.yaml`. Cold start on the free tier may take ~30s if the service has been idle.*
+
+---
+
+## AI-Powered Config Generation
+
+Orbit includes a built-in AI assistant that turns plain-English deployment descriptions into valid `cicd-config.json` — either generating a fresh config from scratch or incrementally editing an existing one. You describe what you want ("Express API in backend/, deploys locally via PM2"), and Orbit produces a schema-compliant configuration fragment, diffs it against your current config, and lets you review every change before anything is written to disk.
+
+### Safety Design
+
+This isn't a raw LLM wrapper. Every generated config passes through a multi-layer safety pipeline before it can reach your filesystem:
+
+- **Schema validation (Ajv)** — output must conform to the cicd-config JSON Schema (draft-07), including conditional rules for local vs. remote/SSH mode.
+- **Bounded retry** — if the LLM's first output fails validation, errors are fed back for exactly one correction attempt. No unbounded loops.
+- **Path traversal rejection** — generated `path`, `localPath`, `remotePath`, and `keyPath` fields are checked for `..` sequences and mismatched absolute/relative expectations.
+- **Shell-metacharacter rejection** — `ssh.host`, `ssh.user`, and all command values are scanned for injection patterns (`;`, `` ` ``, `$(`, redirects) before the config is accepted.
+- **Destructive-edit protection** — the apply endpoint refuses (409) to write any config that would silently delete existing projects, remove components, or drop fields from matched objects. The UI renders an unmissable red warning banner.
+- **Rate limiting** — the generation endpoint is capped at 10 requests per 5 minutes per IP to control API costs.
+
+### How to Try It
+
+1. Start the server: `npm run dev`
+2. Visit [`/config.html`](http://localhost:3000/config.html) in your browser.
+3. Type a deployment description (e.g. *"Node API in server/, deploys to my VPS at 142.93.78.12 via SSH, user deploy, restart with pm2 reload api"*).
+4. Review the color-coded diff and full proposed config.
+5. Click **Apply** — the config is written atomically with a timestamped `.bak` backup.
+
+### LLM Provider
+
+Orbit uses **Groq's API** with the **Llama 3.3 70B** model via the OpenAI-compatible SDK — not OpenAI directly. This choice keeps inference costs near zero during development while providing output quality comparable to GPT-4 class models for structured JSON generation tasks. Set `GROQ_API_KEY` in your `.env` to enable it.
+
+![Config UI](docs/config-ui-screenshot.png)
+
 ---
 
 ## Architecture & Deployment Flow
@@ -89,12 +123,13 @@ npm install --omit=dev
 ### 2. Environment Setup
 Configure the environment variables by creating a `.env` file in the root directory:
 ```env
-PORT=5001
+PORT=3000
 SERVER_URL=https://your-orbit-instance.com
 GITHUB_SECRET=your-github-webhook-secret
 GITHUB_TOKEN=your-github-personal-access-token
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 TELEGRAM_CHAT_ID=your-telegram-chat-id
+GROQ_API_KEY=your-groq-api-key
 ```
 
 ### 3. Server Initialization
@@ -183,13 +218,24 @@ stateDiagram-v2
 ```
 src/
 ├── app.js                       # Server entrypoint & configuration
+├── config/
+│   └── cicd-config.json         # Project/component deployment definitions
+├── schemas/
+│   └── cicd-config.schema.json  # JSON Schema (draft-07) for config validation
+├── prompts/
+│   └── config-generation.md     # LLM prompt template with editing rules
 ├── routes/                      # Route controllers
 │   ├── health.js                # Uptime checks
 │   ├── runs.js                  # Deployment run status inquiries
-│   └── webhook.js               # Webhook receiver & lifecycle controller
-├── middlewares/                 # Express middlewares
+│   ├── webhook.js               # Webhook receiver & lifecycle controller
+│   └── config.js                # AI config generation & apply endpoints
+├── middlewares/                  # Express middlewares
 │   └── verify-signature.js      # GitHub SHA256 HMAC validator
 ├── services/                    # Business logic services
+│   ├── config-ai-service.js     # Groq/Llama 3.3 config generator with retry
+│   ├── config-diff-service.js   # Structured diff engine for config changes
+│   ├── config-validator.js      # Ajv schema + path + shell sanitization
+│   ├── config-writer-service.js # Atomic write with timestamped backups
 │   ├── deploy-service.js        # Deployment pipeline controller
 │   ├── git-services.js          # Git operations manager
 │   ├── github-status-service.js # GitHub Commit Status updater
@@ -205,6 +251,14 @@ src/
     ├── cicd-error.js            # Custom error class
     ├── path-matcher.js          # File change path matcher
     └── validate-env.js          # Environment variable validator
+
+public/
+└── config.html                  # AI Config Generator web UI
+
+scripts/
+├── test-generate.js             # AI generation smoke test
+├── test-phase4-verification.js  # Field-preservation verification
+└── test-guardrails.js           # Security guardrail tests
 ```
 
 ---
@@ -247,6 +301,20 @@ Queries details of a specific deployment pipeline execution by commit SHA.
 Ingests GitHub webhook payload. Signature is validated with HMAC-SHA256.
 * **Method**: `POST`
 * **Route**: `/webhook/github`
+
+### 4. Generate Config (AI)
+Generates a `cicd-config.json` from a natural-language instruction. Rate-limited to 10 requests per 5 minutes.
+* **Method**: `POST`
+* **Route**: `/config/generate`
+* **Body**: `{ "instruction": "Express API in backend/, deploys locally via PM2" }`
+* **Response**: `{ "success": true, "proposedConfig": {...}, "diff": [...] }`
+
+### 5. Apply Config
+Validates and writes a proposed config to disk. Rejects with 409 if it would delete projects or drop fields.
+* **Method**: `POST`
+* **Route**: `/config/apply`
+* **Body**: `{ "proposedConfig": {...} }`
+* **Response**: `{ "success": true, "message": "Config updated", "backupPath": "..." }`
 
 ---
 

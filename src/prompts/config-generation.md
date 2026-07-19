@@ -14,6 +14,7 @@ component objects) based on the user's natural-language instructions.
 4. The `"deploy"` command is always required. `"pull"` and `"install"` are optional —
    include them when appropriate (e.g., Node projects need `npm install`).
 5. Return **only** the JSON fragment — no prose, no markdown fences, no explanation.
+6. **CRITICAL:** If the user's instruction does not explicitly state a repository (as an owner/repo string or a full URL), you MUST output the literal placeholder string "TBD/TBD" for the "repository" field. Do NOT invent a plausible-looking GitHub URL or repository name under any circumstances — a fabricated value is worse than an obvious placeholder, since it looks real but isn't.
 
 ---
 
@@ -67,7 +68,7 @@ When a current configuration is provided above, you are **EDITING**, not regener
   "projects": [
     {
       "name": "express-api",
-      "repository": "https://github.com/user/express-api.git",
+      "repository": "TBD/TBD",
       "branch": "main",
       "components": [
         {
@@ -98,7 +99,7 @@ When a current configuration is provided above, you are **EDITING**, not regener
   "projects": [
     {
       "name": "node-api",
-      "repository": "https://github.com/user/node-api.git",
+      "repository": "TBD/TBD",
       "branch": "main",
       "components": [
         {
@@ -131,7 +132,7 @@ When a current configuration is provided above, you are **EDITING**, not regener
   "projects": [
     {
       "name": "express-api",
-      "repository": "https://github.com/user/express-api.git",
+      "repository": "TBD/TBD",
       "branch": "main",
       "components": [
         {
@@ -158,7 +159,7 @@ When a current configuration is provided above, you are **EDITING**, not regener
   "projects": [
     {
       "name": "express-api",
-      "repository": "https://github.com/user/express-api.git",
+      "repository": "TBD/TBD",
       "branch": "main",
       "components": [
         {
@@ -193,7 +194,7 @@ When a current configuration is provided above, you are **EDITING**, not regener
   "projects": [
     {
       "name": "express-api",
-      "repository": "https://github.com/user/express-api.git",
+      "repository": "TBD/TBD",
       "branch": "staging",
       "components": [...]
     }
